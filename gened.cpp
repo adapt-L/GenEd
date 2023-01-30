@@ -137,9 +137,10 @@ int main(int argc, char** argv){
 	build_end = std::chrono::system_clock::now();
 	std::chrono::duration<double> build_time = build_end - build_start;
 	std::cout << "(took " << build_time.count() << "s)" << std::endl;
-	std::cout << "running... " << std::flush;
 	
-	uint64_t chunksize =  1*1000*1000;
+	
+	uint64_t chunksize = 1*1000*1000;
+	uint64_t chunks = 100;
 	//uint8_t rand[] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	
 	uint8_t rand[32];
@@ -149,11 +150,13 @@ int main(int argc, char** argv){
 	rand_file.close();
 	
 
-	uint64_t mask =   0xFFFFFF;
-	uint64_t mask_len = 16;
-	uint64_t filter = 0xefcdab;
+	uint64_t mask =   0xFFFFFF; //24 bits, 2^24 ~ 16.8M average needed
+	uint64_t filter = 0xEFCDAB; // 0xABCDEF
 	uint64_t keystore = 1;
 	uint32_t keycount = 0;
+	
+	hexprint("Mask",(uint8_t*)&mask,8);
+	hexprint("Filter",(uint8_t*)&filter,8);
 	
 	cl::Buffer outkey_buffer(ctx, CL_MEM_WRITE_ONLY, (32*keystore) + 1);
 	std::vector<uint8_t> outkeys(32*keystore);
@@ -168,7 +171,8 @@ int main(int argc, char** argv){
 	kern.setArg(2, rand_buffer);
 	kern.setArg(3, mask);
 	kern.setArg(4, filter);
-	for(auto i = 0; i < 1; i++){
+	std::cout << "running... " << std::flush;
+	for(auto i = 0; i < chunks; i++){
 		std::chrono::time_point<std::chrono::system_clock> run_start;
 		run_start = std::chrono::system_clock::now();
 
@@ -184,18 +188,17 @@ int main(int argc, char** argv){
 		run_end = std::chrono::system_clock::now();
 		std::chrono::duration<double> run_time = run_end - run_start;
 		std::cout << run_time.count() << "s)" << std::endl;
-		std::cout << "rate: " << double(chunksize)/double(run_time.count()*1000000) << "M" << std::endl;
-	}
+		std::cout << "rate: " << double(chunksize)/double(run_time.count()*1000000) << "M keypairs/sec" << std::endl;
 
-	//check for effectiveness and backtrack? or just use atomics?
-	//uint32_t iter = 0;
-	uint32_t iter = 1;
-	//cq.enqueueReadBuffer(keycount_buffer, CL_TRUE, 0, 4, &iter);
-	for(auto i = 0; i < iter; i++){
-		
-		hexprint("",&(outkeys[i*32]), 32);
+		//check for effectiveness and backtrack? or just use atomics?
+		//uint32_t keyfound = 0;
+		//cq.enqueueReadBuffer(keycount_buffer, CL_TRUE, 0, 4, &iter);
+		//std::cout << "keyfound: " << keyfound << std::endl;
+		uint32_t keyfound = 1;
+		for(auto j = 0; j < keyfound; j++){
+			hexprint("",&(outkeys[j*32]), 32);
+		}
 	}
-	std::cout << "iter: " << iter << std::endl;
 	
 	return 0;
 }
